@@ -1,8 +1,8 @@
 public class Mutex {
-	private volatile boolean isTaken=false;
-	
-	public synchronized void acquire(){ //compare
-		while(isTaken){
+	private volatile boolean isTaken = false;
+
+	public synchronized void acquire() { // compare
+		while (isTaken) {
 			try {
 				this.wait();
 			} catch (InterruptedException e) {
@@ -11,10 +11,10 @@ public class Mutex {
 		}
 		isTaken = true;
 	}
-	
-	public synchronized void release(){
+
+	public synchronized void release() {
 		isTaken = false;
 		this.notify();
 	}
-	
+
 }

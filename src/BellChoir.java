@@ -20,9 +20,9 @@ import javax.sound.sampled.SourceDataLine;
 public class BellChoir {
 
 	private static final int finalIndex = Note.values().length - 1;
-	
+
 	public static Player[] player = new Player[finalIndex];
-	
+	private static Boolean isPlaying;
 
 	public static void main(String[] args) {
 		List<BellNote> notes = null;
@@ -45,24 +45,44 @@ public class BellChoir {
 		// Teach the AI program using the data
 		final AudioFormat af = new AudioFormat(Note.SAMPLE_RATE, 8, 1, true, false);
 		BellChoir t = new BellChoir(af);
-		
+
 		createPlayers();
-		
+
+		isPlaying = true;
 		try {
 			t.playSong(notes);
 		} catch (LineUnavailableException e) {
 			e.printStackTrace();
 		}
+		while (isPlaying) {
+		}
+
+		stopPlayers();
 
 	}
 
+	/**
+	 * Create the players to start the player threads
+	 */
 	private static void createPlayers() {
 		// TODO Auto-generated method stub
-		
-		for(int i=0; i<finalIndex; i++){
-			player[i] = new Player(Note.values()[i+1]);
+
+		for (int i = 0; i < finalIndex; i++) {
+			player[i] = new Player(Note.values()[i + 1]);
 		}
-		
+
+	}
+
+	/**
+	 * Tells each player to stop
+	 */
+	private static void stopPlayers() {
+		for (int i = 0; i < finalIndex; i++) {
+			try {
+				player[i].playerStop();
+			} catch (InterruptedException e) {
+			}
+		}
 	}
 
 	/**
@@ -118,7 +138,7 @@ public class BellChoir {
 	}
 
 	/**
-	 * Parses the values read in from the file into BellNotes
+	 * Parses the lines read in from the file into BellNotes
 	 * 
 	 * @param line
 	 * @return BellNote
@@ -129,6 +149,7 @@ public class BellChoir {
 			Note myNote = null;
 			try {
 				myNote = Note.valueOf(fields[0]);
+				// I got the previous line of code from Joseph Ikehara
 			} catch (Exception e) {
 				System.err.println("Error: Invalid Note '" + fields[0] + "'");
 			}
@@ -140,13 +161,14 @@ public class BellChoir {
 	}
 
 	/**
-	 * Returns if the note is a proper notelength or prints an errors
+	 * Returns if the note is a proper note length or prints an error message
 	 * 
 	 * @param noteLength
 	 * @return NoteLength
 	 */
 	private static NoteLength parseNoteLength(String noteLength) {
 		if (noteLength == null) {
+			System.err.println("Error: Invalid Note Length'" + noteLength + "'");
 			return null;
 		}
 
@@ -182,36 +204,32 @@ public class BellChoir {
 		this.af = af;
 	}
 
+	/**
+	 * Plays the song by calling on the player threads
+	 * 
+	 * @param song
+	 * @throws LineUnavailableException
+	 */
 	void playSong(List<BellNote> song) throws LineUnavailableException {
 		try (final SourceDataLine line = AudioSystem.getSourceDataLine(af)) {
 			line.open();
 			line.start();
-			
+
 			Mutex m = new Mutex();
-			
+
 			for (BellNote bn : song) {
 				m.acquire();
-				try{
-//					player[bn.note.ordinal()-1].setLine(line);
-//					player[bn.note.ordinal()-1].setLength(bn.length);
-					player[bn.note.ordinal()-1].playNote(line, bn.length);
-				}finally{
+				try {
+					player[bn.note.ordinal() - 1].playNote(line, bn.length);
+				} finally {
 					m.release();
 				}
-				
-//				playNote(line, bn);
+
 			}
 			line.drain();
 		}
+		isPlaying = false;
 	}
-
-//	private void playNote(SourceDataLine line, BellNote bn) {
-//		final int ms = Math.min(bn.length.timeMs(), Note.MEASURE_LENGTH_SEC * 1000);
-//		final int length = Note.SAMPLE_RATE * ms / 1000;
-//		line.write(bn.note.sample(), 0, length);
-//		line.write(Note.REST.sample(), 0, 50);
-//	}
-	
 
 }
 
@@ -229,25 +247,17 @@ class BellNote {
 		this.length = length;
 	}
 
-	Note getNote() {
-		return this.note;
-	}
-
-	NoteLength getNoteLength() {
-		return this.length;
-	}
 }
 
 /**
- * NoteLength is how long the note is. Whole(1), Half(2), Quarter(4), or Eigth(8)
+ * NoteLength is how long the note is. Whole(1), Half(2), Quarter(4), or
+ * Eigth(8)
+ * 
  * @author Ericaf
  *
  */
 enum NoteLength {
-	WHOLE(1.0f), 
-	HALF(0.5f), 
-	QUARTER(0.25f), 
-	EIGTH(0.125f);
+	WHOLE(1.0f), HALF(0.5f), QUARTER(0.25f), EIGTH(0.125f);
 
 	private final int timeMs;
 
@@ -262,6 +272,7 @@ enum NoteLength {
 
 /**
  * Notes that the program knows how to play A4-B5 with sharps but no flats
+ * 
  * @author Ericaf
  *
  */
